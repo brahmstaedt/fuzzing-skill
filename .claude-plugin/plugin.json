@@ -1,0 +1,8 @@
+{
+  "name": "fuzzing",
+  "version": "1.0.0",
+  "description": "AFL++ fuzzing of C/C++ libraries: prepare a campaign, run and triage it, write vulnerability reports, and carry findings forward to new upstream releases.",
+  "author": {"name": "Oliver Brahmstädt"},
+  "repository": "https://github.com/brahmstaedt/fuzzing-skill",
+  "keywords": ["fuzzing", "afl++", "security", "vulnerability-report"]
+}

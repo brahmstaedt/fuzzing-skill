@@ -1,0 +1,7 @@
+{
+  "name": "fuzzing-skill",
+  "owner": {"name": "Oliver Brahmstädt"},
+  "plugins": [
+    {"name": "fuzzing", "source": "./", "description": "AFL++ fuzzing campaigns, triage, vulnerability reports and release rebasing."}
+  ]
+}
