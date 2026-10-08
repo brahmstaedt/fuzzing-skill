@@ -18,7 +18,8 @@ Everything lives under the workspace: `$FUZZ_ROOT`, or the current directory. It
   <version>/
     src/                     git worktree of .fork: branch fuzzing/<version> (pristine + campaigns) or patched/<version> (known findings fixed)
       fuzz/<campaign>/       build.sh, harness.cc, seeds/, seed generator, dictionary, NOTES.md; harness (built, never committed)
-    work/                    scratch: library builds, plain/trace builds, generator binaries (never committed)
+    work/                    scratch: library builds, plain/trace builds, generator binaries (never committed);
+                             work/pristine/ = second worktree at fuzzing/<version> for the unpatched triage build (fuzz-run §6)
     <campaign>/out/          raw AFL++ output (never committed); earlier rounds in out/archive/roundN
     <campaign>/findings/     curated inputs per signature + minimized/ + README.md (from /fuzzing:fuzz-run)
     <campaign>/problems.md   problems log (below)

@@ -88,6 +88,13 @@ and anything that threatens the run (memory, dead instances). No speculation abo
   Then locate it (`gdb -batch -ex "run < f" -ex bt`, interrupt by **pid**). Decide library vs harness: a hang that only occurs
   because the harness lets a huge declared size through (an input-size / element-count cap the harness should enforce) is a harness-config issue, otherwise the library.
 - Check ASan/AFL settings first when something looks odd: `exec_timeout` in `fuzzer_stats`, stability (< ~90% = state leaks).
+- **Attribution when fuzzing on `patched/<version>`** (§6): replay every new crash or hang on the patched harness **and** on the unpatched one
+  (`V/work/pristine/fuzz/C/harness`, §6) and classify it before anything else:
+  - crashes both, at a site none of our fixes touch → **pre-existing** bug in the release: a candidate finding;
+  - crashes both, at a site our fixes touch → our fix is **incomplete** (or a known finding the fix does not cover — check the vulnerability's `status.json`);
+  - crashes only patched → **introduced by our patch**: fix the patch, never report it to the vendor;
+  - crashes unpatched at a known site but patched somewhere else → a second bug **masked** by a known finding; report it as its own finding, noting it is reached only once the known one is fixed.
+  Record the class next to the input in `V/C/findings/` (README table). All of it stays provisional until the vendor's own fixes ship (`/fuzzing:fuzz-rebase`).
 
 ## 5b. Verify against a plain build (before calling anything a finding)
 An ASan replay only shows the bug exists under the sanitizer. A candidate is only reported as a finding once it is checked
@@ -134,6 +141,13 @@ must stop rediscovering them, or every new round is flooded with the same crashe
 - Stop the campaign (§2), take the final snapshot (§2b), and move the round aside: `mv V/C/out V/C/out.tmp && mkdir -p V/C/out/archive && mv V/C/out.tmp V/C/out/archive/roundN`
   (keep any older `archive/` rounds: move them back under the new `out/archive/`).
 - Switch the worktree and rebuild **every** campaign of this version (they share the source): `git -C V/src switch patched/<version>`, then each `V/src/fuzz/*/build.sh`.
+- Keep an **unpatched** build next to it for triage attribution (§5): a second worktree, detached at the pristine branch, with its own scratch dir:
+  ```bash
+  git -C <project>/.fork worktree add --detach "$PWD/V/work/pristine" fuzzing/<version>      # once; never commit fixes here
+  FUZZ_WORK=$PWD/V/work/pristine-work MAKE_JOBS=4 nice -n 19 V/work/pristine/fuzz/C/build.sh   # each campaign; harness: V/work/pristine/fuzz/C/harness
+  ```
+  Positive control before trusting it: a saved finding must crash the pristine harness and pass the patched one. When `fuzzing/<version>` gets new
+  campaign commits, `git -C V/work/pristine checkout --detach fuzzing/<version>` and rebuild.
 - Replay every saved finding of every campaign against the patched build: each must be gone. One that still fails means an incomplete fix — report it, do not fuzz on.
 - Start the new round with the previous corpus as seeds, so coverage is not lost: `afl-cmin -i V/C/out/archive/roundN/main/queue -o V/work/C-cmin -- V/src/fuzz/C/harness`, then
   start as in §2 with `SEEDS=$PWD/V/work/C-cmin` added to the environment (the entrypoint uses `$CAMPAIGN/seeds` otherwise).

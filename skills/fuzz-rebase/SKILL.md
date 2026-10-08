@@ -20,7 +20,8 @@ git -C <project>/.fork tag -l '*<new-version>*'                      # find the 
 git -C <project>/.fork worktree add -b fuzzing/<new-version> ../<new-version>/src <release-tag>
 git -C N/src checkout fuzzing/<old-version> -- fuzz                  # all campaigns of the old version, unchanged
 ```
-Commit `fuzz/` on `fuzzing/<new-version>` ("carry campaigns over from <old-version>"). Fix version-specific lines (module lists, flags) only where
+Commit `fuzz/` on `fuzzing/<new-version>` ("carry campaigns over from <old-version>"). Create the unpatched triage worktree for the new
+version right away (`/fuzzing:fuzz-run` §6: `git -C <project>/.fork worktree add --detach "$PWD/N/work/pristine" fuzzing/<new-version>`). Fix version-specific lines (module lists, flags) only where
 the build needs it, as separate commits. Build every campaign (`N/src/fuzz/*/build.sh`) and check each harness on its seeds
 (`/fuzzing:fuzz-campaign` §4) before anything else: a replay against a broken build proves nothing.
 
@@ -51,7 +52,7 @@ Rebuild every campaign on `patched/<new-version>` and replay again: every still-
 
 ## 4. Retire the old version
 - Delete `patched/<old-version>` (`git -C <project>/.fork branch -D patched/<old-version>`; it was temporary) and, once nothing runs on it, the old
-  worktree (`git -C <project>/.fork worktree remove O/src`). `fuzzing/<old-version>` stays: it records the campaigns as they were for that release.
+  worktrees (`git -C <project>/.fork worktree remove O/src`, and `O/work/pristine`). `fuzzing/<old-version>` stays: it records the campaigns as they were for that release.
 - `O/` (reports, findings, status) stays in the workspace repository unchanged except for `status.json` updates.
 
 ## 5. Continue fuzzing

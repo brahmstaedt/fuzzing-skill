@@ -62,6 +62,8 @@ go into one report as "manifestations". Keep a separate report for a different c
 
 ## 2. How to get the facts (do this, do not recall)
 - **CVSS**: compute with a small script (v3.1 formula: ISS, impact, exploitability, round-up) and print the numbers into the report; cross-check the vector string format `CVSS:3.1/AV:./AC:./PR:./UI:./S:./C:./I:./A:.`.
+- **Pre-existing, not ours**: a finding from a campaign on `patched/<version>` is reported only if it reproduces on the unpatched build
+  (`V/work/pristine`, `/fuzzing:fuzz-run` §5 attribution); a crash that needs our fixes to be reached says so, one introduced by them is not reported.
 - **Root cause**: read the source at the sites named by ASan; confirm mechanisms by tracing in a *throwaway worktree* (`git -C <project>/.fork worktree add --detach V/work/trace fuzzing/<version>`; `fprintf` at the suspected spot, build `-O0`, run the minimised PoC and a normal seed as control) — hypotheses stay labelled "reasoned" until traced.
 - **Affected versions**: check out neighbouring release tags and the upstream default branch in `<project>/.fork` (`git fetch upstream --tags`) and diff the function; only claim "affected" if the code is identical or the PoC was run.
 - **Patch**: smallest change that removes the root cause; keep behaviour for valid input identical. Commit it on `patched/<version>` (one commit per root cause), rebuild the plain+ASan variants from that branch, run (a) PoCs, (b) the whole saved finding set, (c) all seeds with output hash comparison, (d) a sample of the fuzz corpus for new failures. Record counts.
