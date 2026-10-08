@@ -1,33 +1,44 @@
-# fuzzbar
+# fuzzing — Claude Code plugin for AFL++ campaigns
 
-Demo: an AI agent prepares a fuzzing campaign against a 3rd-party C/C++ library, AFL++
-finds a bug in it, and the finding is replayed so the audience can see it happen.
+Skills that let Claude prepare, run and triage AFL++ fuzzing campaigns against C/C++ libraries, write
+vulnerability reports a maintainer can act on, and carry findings forward to new upstream releases.
 
-## The three pieces
+| Skill | Does |
+|---|---|
+| `/fuzzing:fuzz-campaign <project> <version> <campaign> <goal>` | Checks out the project at the release tag, builds it with AFL++ and ASan, writes a harness for the goal, generates seeds, verifies the binary, commits the campaign on `fuzzing/<version>` |
+| `/fuzzing:fuzz-run <project>/<version>/<campaign>` | Starts the campaign on 80% of the cores (or on a remote server), keeps a dashboard, reports real findings, triages crashes vs hangs, verifies against plain builds, minimises reproducers, continues fuzzing on the patched branch |
+| `/fuzzing:vuln-report <project>/<version>` | One report per root cause (evidence, reproduction without our harness, CVSS, patch, regression test), fixes as commits on `patched/<version>`, `status.json` per vulnerability, independent verification, disclosure package and tag |
+| `/fuzzing:fuzz-rebase <project> <new-version>` | Moves campaigns to a new release, replays every saved input on the unpatched release, marks vulnerabilities fixed or still open, rebuilds the patch branch |
 
-1. **Skill** (`.claude/skills/fuzz-campaign/`) — given a library, a version, and a goal
-   (e.g. "fuzz the DICOM input parsing"), Claude builds the library with AFL++
-   instrumentation and AddressSanitizer, writes a harness that reads one input from stdin,
-   and generates a handful of seed inputs. Result: `campaigns/<name>/harness` +
-   `campaigns/<name>/seeds/`.
-2. **`afl-fuzz`**, run by hand on the host, fuzzes that one binary.
-3. **Replay**: `campaigns/<name>/harness < <the input that triggered it>` reproduces the
-   same finding outside AFL++, with a full AddressSanitizer report and stack trace.
+## Install
 
-There is no framework script in between — just the skill, the binary it produces, and
-ordinary AFL++ commands. See `DEMO-RUNBOOK.md` for the exact commands, and
-`demo-setup.sh` for host preparation before a live run.
+```
+/plugin marketplace add <path-or-url-of-this-repository>
+/plugin install fuzzing@fuzzing-skill
+```
 
-## Worked example
+After editing a skill in a local checkout, run `/reload-plugins`.
 
-DCMTK 3.6.3, the reference open-source toolkit for DICOM (the file format used by medical
-imaging devices), carries CVE-2019-1010228: a buffer overflow in its RLE image decoder,
-fixed in 3.6.4. From eight ordinary DICOM images and no hints about where the bug is,
-fuzzing finds a crash in seconds on a single core. The crash is a real, documented,
-already-fixed vulnerability — not a zero-day discovery.
+## Workspace
+
+The skills work in a workspace directory of your choice (`$FUZZ_ROOT`, or the current directory) and never write its name anywhere:
+
+```
+<project>/
+  .fork/                  clone of the project; upstream push disabled
+  <version>/
+    src/                  worktree: fuzzing/<version> (campaigns under fuzz/<campaign>/) or patched/<version> (known findings fixed)
+    work/                 scratch builds
+    <campaign>/           out/ (raw AFL++ output), findings/ (curated), problems.md
+    VULN-NN-<slug>/       report.md, fix.patch, status.json, poc/
+    repro/ triage/ INDEX.md disclosure_<date>.md
+```
+
+Keep the workspace in a **private** repository: it holds working crash inputs and unpublished vulnerability details.
+`src/`, `work/` and `out/` are not committed there; campaigns live on the fork's branches. This repository contains
+only the generic plugin — never campaign files, findings or reports.
 
 ## Requirements
 
-Ubuntu 24.04 or similar. `demo-setup.sh` installs `afl++` and `gdb` if missing, and sets
-`kernel.core_pattern=core` and the CPU governor to `performance`, which AFL++ requires
-and which are not writable inside a container — this script is meant to run on the host.
+Ubuntu 24.04 or similar with `afl++`, `clang-17` and `cmake` (the skills install what is missing). AFL++ needs
+`kernel.core_pattern=core` on the host; the remote mode prepares a server itself.

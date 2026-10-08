@@ -1,5 +1,4 @@
-# Generated per run. demo-setup.sh wipes these before a demo; the skill regenerates them.
-campaigns/
-out/
-work/
-core.*
+# This repository holds only the generic plugin. Campaigns, findings and
+# reports live in the user's private workspace, never here.
+__pycache__/
+*.pyc
