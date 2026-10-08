@@ -30,8 +30,9 @@ FUZZ_SNAPSHOT=${CLAUDE_SKILL_DIR}/scripts/session-snapshot.py \
   CAMPAIGN=$PWD/V/src/fuzz/C OUT=$PWD/V/C/out setsid nohup ${CLAUDE_SKILL_DIR}/scripts/fuzz-entrypoint.sh >> V/C/out/entrypoint.log 2>&1 &
 ```
 `fuzz-entrypoint.sh` (ships with this skill) starts 1 main + N-1 secondary `afl-fuzz` instances, N = **80% of `nproc`** (override `FUZZ_CORES`),
-with `-m none -t 1000+` and `AFL_AUTORESUME=1` (a restart continues the old state).
-- `-t 1000+`: AFL++'s auto timeout (~20 ms) flags merely slow ASan runs as hangs; 1 s keeps real stalls only.
+with `-m none -t 1000` (`FUZZ_TIMEOUT`, ms) and `AFL_AUTORESUME=1` (a restart continues the old state).
+- `-t 1000`: AFL++'s auto timeout (~20 ms) flags merely slow ASan runs as hangs; 1 s keeps real stalls only. Do **not** use `-t 1000+`: the `+` means
+  "auto-calculate, with 1000 as the maximum" and in practice gave exec timeouts of 25 s up to 20 min (check `exec_timeout` in `fuzzer_stats` after every start).
 - The entrypoint renices itself to 19 (and IO class idle), so the fuzzers never compete with the user's desktop; renice running ones with
   `renice -n 19 -p $(pgrep -x afl-fuzz) $(pgrep -x harness)`. Run all side jobs (builds, replays, coverage) with `nice -n 19` too.
 - Verify after ~30 s: `pgrep -c afl-fuzz` equals N, `V/C/out/*/fuzzer_stats` exist.
